@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Análise de Precificação – Riviera Beach Place</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Warm Neutral (Slate, Stone, Amber) -->
+    <!-- Application Structure Plan: A single-page dashboard structure with a fixed sidebar navigation for seamless scrolling between sections. This design was chosen to transform the linear report into an exploratory tool. The user flow is: 1) Overview with KPIs, 2) Deep dive into competitive landscape with an interactive chart and table, 3) Focus on the subject property's unique value, and 4) Understand the actionable pricing strategy. This structure prioritizes usability by presenting a summary first, then allowing progressive disclosure of details, which is more effective for data synthesis than a static document. -->
+    <!-- Visualization & Content Choices: 
+        - Overview KPIs: Goal=Inform. Method=Styled HTML cards. Interaction=None. Justification=Quickly surface the most critical numbers from the report.
+        - Competitor Comparison: Goal=Compare. Method=Interactive Bar Chart (Chart.js) and Sortable HTML Table. Interaction=Chart metric can be toggled (Price/Night vs. Price/Guest), table columns are sortable. Justification=Allows users to dynamically analyze the competitive landscape from multiple perspectives, which is the core of the report.
+        - Property Differentials: Goal=Inform. Method=HTML/CSS card layout with Unicode icons. Interaction=None. Justification=Presents qualitative strengths in a visually engaging and easily digestible format.
+        - Pricing Structure: Goal=Inform. Method=Bar Chart (Chart.js). Interaction=None. Justification=Clearly visualizes the recommended price points (base, high/low season, introductory).
+        - Action Plan: Goal=Organize. Method=Interactive Stepper (HTML/CSS/JS). Interaction=Click to reveal phase details. Justification=Transforms a static list into a guided, interactive flow, improving comprehension and user engagement.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc; /* slate-50 */
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 900px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 400px;
+            max-height: 50vh;
+        }
+        @media (max-width: 768px) {
+            .chart-container {
+                height: 350px;
+                max-height: 60vh;
+            }
+        }
+        .table-sortable th {
+            cursor: pointer;
+        }
+        .table-sortable th:hover {
+            background-color: #f1f5f9; /* slate-100 */
+        }
+        .nav-link.active {
+            background-color: #eab308; /* amber-500 */
+            color: #ffffff;
+        }
+        .mobile-nav-link.active {
+            color: #eab308; /* amber-500 */
+            font-weight: 600;
+        }
+        .strategy-step {
+            cursor: pointer;
+            transition: opacity 0.3s ease;
+        }
+        .strategy-step:not(.active) {
+            opacity: 0.6;
+        }
+        .strategy-step:not(.active):hover {
+            opacity: 1;
+        }
+        .mobile-header {
+            transition: transform 0.3s ease-in-out;
+        }
+        .mobile-header-hidden {
+            transform: translateY(-100%);
+        }
+    </style>
+</head>
+<body class="text-slate-800">
+
+    <div class="flex flex-col md:flex-row min-h-screen">
+        <!-- Desktop Sidebar -->
+        <aside class="hidden md:block w-64 bg-slate-800 text-white p-6 fixed h-full">
+            <h1 class="text-2xl font-bold text-amber-400 mb-8">Análise de Precificação</h1>
+            <nav>
+                <ul class="space-y-2">
+                    <li><a href="#visao-geral" class="nav-link block py-2 px-4 rounded-lg hover:bg-slate-700 transition-colors duration-200">Visão Geral</a></li>
+                    <li><a href="#analise-competitiva" class="nav-link block py-2 px-4 rounded-lg hover:bg-slate-700 transition-colors duration-200">Análise Competitiva</a></li>
+                    <li><a href="#imovel-foco" class="nav-link block py-2 px-4 rounded-lg hover:bg-slate-700 transition-colors duration-200">Imóvel-Foco</a></li>
+                    <li><a href="#estrategia" class="nav-link block py-2 px-4 rounded-lg hover:bg-slate-700 transition-colors duration-200">Estratégia</a></li>
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- Mobile Header -->
+        <header id="mobile-header" class="md:hidden mobile-header bg-white/80 backdrop-blur-lg shadow-sm fixed top-0 left-0 right-0 z-50">
+            <div class="p-4 border-b border-slate-200">
+                <h1 class="text-lg font-bold text-amber-500 text-center">Análise de Precificação</h1>
+            </div>
+            <nav class="flex justify-around p-2 text-sm">
+                 <a href="#visao-geral" class="mobile-nav-link p-2 transition-colors duration-200">Geral</a>
+                 <a href="#analise-competitiva" class="mobile-nav-link p-2 transition-colors duration-200">Mercado</a>
+                 <a href="#imovel-foco" class="mobile-nav-link p-2 transition-colors duration-200">Imóvel</a>
+                 <a href="#estrategia" class="mobile-nav-link p-2 transition-colors duration-200">Estratégia</a>
+            </nav>
+        </header>
+
+        <main class="flex-1 md:ml-64 p-4 sm:p-6 lg:p-8 pt-28 md:pt-8">
+            <header class="mb-8">
+                <h2 class="text-2xl sm:text-3xl font-bold text-slate-900">Riviera Beach Place Golf Residence</h2>
+                <p class="text-slate-500 mt-1">Dashboard interativo baseado no relatório de 28 de Agosto de 2025.</p>
+            </header>
+
+            <section id="visao-geral" class="mb-12 scroll-mt-28 md:scroll-mt-20">
+                <h3 class="text-xl sm:text-2xl font-semibold mb-4 border-b pb-2">Visão Geral</h3>
+                <p class="text-slate-600 mb-6">Esta seção apresenta os principais indicadores do imóvel-foco e um resumo visual do seu posicionamento no mercado competitivo. A análise completa dos concorrentes está disponível na próxima seção.</p>
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                    <div class="bg-white p-4 rounded-xl shadow-md border border-slate-200">
+                        <h4 class="text-slate-500 font-medium text-sm">Capacidade</h4>
+                        <p class="text-2xl font-bold text-slate-900 mt-2">8 Hóspedes</p>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl shadow-md border border-slate-200">
+                        <h4 class="text-slate-500 font-medium text-sm">Quartos</h4>
+                        <p class="text-2xl font-bold text-slate-900 mt-2">3</p>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl shadow-md border border-slate-200">
+                        <h4 class="text-slate-500 font-medium text-sm">Camas</h4>
+                        <p class="text-2xl font-bold text-slate-900 mt-2">6</p>
+                    </div>
+                     <div class="bg-white p-4 rounded-xl shadow-md border border-amber-300 col-span-2 lg:col-span-1">
+                        <h4 class="text-slate-500 font-medium text-sm">Preço Base Recomendado</h4>
+                        <p class="text-2xl font-bold text-amber-600 mt-2">R$ 600-700</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="analise-competitiva" class="mb-12 scroll-mt-28 md:scroll-mt-20">
+                <h3 class="text-xl sm:text-2xl font-semibold mb-4 border-b pb-2">Análise Competitiva</h3>
+                <p class="text-slate-600 mb-6">Explore o cenário competitivo. O gráfico abaixo compara as propriedades com base na métrica selecionada. A tabela detalhada permite uma análise aprofundada e pode ser ordenada clicando nos cabeçalhos.</p>
+                
+                <div class="bg-white p-4 sm:p-6 rounded-xl shadow-md border border-slate-200">
+                    <div class="flex flex-col sm:flex-row justify-between items-center mb-4">
+                        <h4 class="text-lg sm:text-xl font-semibold mb-2 sm:mb-0">Comparativo de Mercado</h4>
+                        <div class="flex items-center space-x-2 bg-slate-100 p-1 rounded-lg">
+                            <button id="viewPrecoNoite" class="px-3 py-1 text-sm font-medium rounded-md transition-colors">Preço/Noite</button>
+                            <button id="viewPrecoHospede" class="px-3 py-1 text-sm font-medium rounded-md transition-colors">Preço/Hóspede</button>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="competitorChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="mt-8 bg-white p-4 sm:p-6 rounded-xl shadow-md border border-slate-200 overflow-x-auto">
+                     <h4 class="text-lg sm:text-xl font-semibold mb-4">Dados dos Concorrentes</h4>
+                    <table class="w-full text-left text-sm table-sortable" id="competitorTable">
+                        <thead class="bg-slate-50 text-slate-600">
+                            <tr>
+                                <th class="p-3 font-semibold" data-sort="imovel">Imóvel</th>
+                                <th class="p-3 font-semibold text-center" data-sort="capacidade">Cap.</th>
+                                <th class="p-3 font-semibold text-center" data-sort="camas">Camas</th>
+                                <th class="p-3 font-semibold text-right" data-sort="precoNoite">Preço/Noite</th>
+                                <th class="p-3 font-semibold text-right" data-sort="precoHospedeDiaria">Preço/Hóspede</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section id="imovel-foco" class="mb-12 scroll-mt-28 md:scroll-mt-20">
+                <h3 class="text-xl sm:text-2xl font-semibold mb-4 border-b pb-2">Imóvel-Foco: Diferenciais e Preços</h3>
+                 <p class="text-slate-600 mb-6">Esta seção destaca os atributos que posicionam nosso imóvel de forma vantajosa no mercado e apresenta a estrutura de precificação recomendada para otimizar a receita e a ocupação.</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="bg-white p-6 rounded-xl shadow-md border border-slate-200">
+                        <h4 class="text-lg sm:text-xl font-semibold mb-4">Diferenciais Competitivos</h4>
+                        <ul class="space-y-4">
+                            <li class="flex items-start">
+                                <span class="text-amber-500 text-2xl mr-3 mt-1">📍</span>
+                                <div>
+                                    <h5 class="font-semibold">Localização Privilegiada</h5>
+                                    <p class="text-slate-600 text-sm">Acesso direto à piscina e à praia, ideal para famílias e todos os perfis de hóspedes.</p>
+                                </div>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="text-amber-500 text-2xl mr-3 mt-1">❄️</span>
+                                <div>
+                                    <h5 class="font-semibold">Conforto Térmico Superior</h5>
+                                    <p class="text-slate-600 text-sm">Totalmente climatizado, garantindo uma estadia de alta qualidade durante todo o ano.</p>
+                                </div>
+                            </li>
+                             <li class="flex items-start">
+                                <span class="text-amber-500 text-2xl mr-3 mt-1">🍳</span>
+                                <div>
+                                    <h5 class="font-semibold">Cozinha Completa</h5>
+                                    <p class="text-slate-600 text-sm">Oferece autonomia e flexibilidade, atraindo famílias e grupos para estadias mais longas.</p>
+                                </div>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="text-amber-500 text-2xl mr-3 mt-1">🛌</span>
+                                <div>
+                                    <h5 class="font-semibold">Relação Cama/Hóspede Superior</h5>
+                                    <p class="text-slate-600 text-sm">Com 6 camas para 8 hóspedes, oferece mais conforto e privacidade que concorrentes diretos.</p>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-md border border-slate-200">
+                        <h4 class="text-lg sm:text-xl font-semibold mb-4">Precificação Recomendada</h4>
+                         <div class="chart-container" style="height: 300px; max-height: 40vh;">
+                            <canvas id="pricingChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="estrategia" class="scroll-mt-28 md:scroll-mt-20">
+                <h3 class="text-xl sm:text-2xl font-semibold mb-4 border-b pb-2">Estratégia e Plano de Ação</h3>
+                <p class="text-slate-600 mb-8">A estratégia de preços visa posicionar o imóvel com uma percepção de valor excepcional. O plano de ação interativo abaixo descreve como implementar a precificação dinâmica, fase a fase, para maximizar a receita de forma contínua. Clique em cada fase para ver os detalhes.</p>
+                
+                <div class="bg-white p-6 rounded-xl shadow-md border border-slate-200">
+                    <div id="strategy-stepper" class="flex flex-col md:flex-row items-start md:items-center justify-between border-b border-slate-200 pb-4 mb-6 space-y-4 md:space-y-0">
+                        <div class="strategy-step active flex items-center w-full md:w-auto" data-step="1">
+                            <div class="step-circle flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-full bg-amber-500 text-white font-bold text-lg transition-colors duration-300">1</div>
+                            <div class="ml-3">
+                                <h4 class="font-semibold text-slate-800 transition-colors duration-300">Lançamento</h4>
+                                <p class="text-xs text-slate-500">Aquisição de Credibilidade</p>
+                            </div>
+                        </div>
+                        <div class="step-line hidden md:block flex-1 h-px bg-slate-300 mx-4"></div>
+                        <div class="strategy-step flex items-center w-full md:w-auto" data-step="2">
+                            <div class="step-circle flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-full bg-slate-300 text-slate-600 font-bold text-lg transition-colors duration-300">2</div>
+                            <div class="ml-3">
+                                <h4 class="font-semibold text-slate-500 transition-colors duration-300">Estabelecimento</h4>
+                                <p class="text-xs text-slate-500">Monitorar Demanda</p>
+                            </div>
+                        </div>
+                        <div class="step-line hidden md:block flex-1 h-px bg-slate-300 mx-4"></div>
+                        <div class="strategy-step flex items-center w-full md:w-auto" data-step="3">
+                            <div class="step-circle flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-full bg-slate-300 text-slate-600 font-bold text-lg transition-colors duration-300">3</div>
+                            <div class="ml-3">
+                                <h4 class="font-semibold text-slate-500 transition-colors duration-300">Otimização</h4>
+                                <p class="text-xs text-slate-500">Ajustes Incrementais</p>
+                            </div>
+                        </div>
+                        <div class="step-line hidden md:block flex-1 h-px bg-slate-300 mx-4"></div>
+                        <div class="strategy-step flex items-center w-full md:w-auto" data-step="4">
+                            <div class="step-circle flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-full bg-slate-300 text-slate-600 font-bold text-lg transition-colors duration-300">4</div>
+                            <div class="ml-3">
+                                <h4 class="font-semibold text-slate-500 transition-colors duration-300">Maximização</h4>
+                                <p class="text-xs text-slate-500">Períodos de Pico</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="strategy-content">
+                        <div class="strategy-content-panel active" data-content="1">
+                            <h5 class="text-lg font-bold text-amber-600 mb-2">Fase 1: Lançamento</h5>
+                            <p class="text-slate-700">O objetivo inicial não é lucro, mas sim a construção de reputação. Use o <strong class="font-semibold">preço de captação (R$ 500)</strong> de forma tática e por tempo limitado. A meta é garantir as primeiras 3 a 5 reservas o mais rápido possível. Cada reserva nesse valor é um investimento para gerar avaliações positivas, que funcionam como a "moeda de confiança" nas plataformas, sendo cruciais para melhorar o ranking do anúncio nos resultados de busca.</p>
+                        </div>
+                        <div class="strategy-content-panel hidden" data-content="2">
+                            <h5 class="text-lg font-bold text-slate-700 mb-2">Fase 2: Estabelecimento</h5>
+                            <p class="text-slate-700">Com as primeiras avaliações positivas, ajuste a diária para a <strong class="font-semibold">faixa base de R$ 600 a R$ 700</strong>. A partir daqui, o principal indicador a ser monitorado é o "ritmo de reserva" (*booking pace*). Se as datas futuras, com 30 a 45 dias de antecedência, começarem a ser preenchidas rapidamente, este é um sinal inequívoco de que a demanda do mercado suporta um valor mais elevado e você pode avançar para a próxima fase.</p>
+                        </div>
+                        <div class="strategy-content-panel hidden" data-content="3">
+                            <h5 class="text-lg font-bold text-slate-700 mb-2">Fase 3: Otimização</h5>
+                            <p class="text-slate-700">Ao perceber uma alta demanda (ritmo de reserva acelerado), não faça grandes saltos de preço. Implemente <strong class="font-semibold">aumentos graduais, em incrementos de R$ 30 a R$ 50</strong>. Esta abordagem de teste e aprendizado permite encontrar o teto de preço do mercado para diferentes períodos sem o risco de afastar potenciais hóspedes. Monitore o ritmo após cada ajuste para otimizar a receita de forma contínua e segura.</p>
+                        </div>
+                        <div class="strategy-content-panel hidden" data-content="4">
+                            <h5 class="text-lg font-bold text-slate-700 mb-2">Fase 4: Maximização</h5>
+                            <p class="text-slate-700">Para períodos de altíssima demanda como <strong class="font-semibold">feriados, férias escolares (dezembro, janeiro, julho) e eventos locais</strong>, o imóvel deve ser precificado com um prêmio significativo sobre a faixa base, alinhado com o preço médio de alta estação (R$ 1.004). A análise dos concorrentes demonstra que esta é uma prática padrão e esperada no mercado, representando a maior oportunidade de maximização de receita.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const propertyData = [
+        { imovel: 'Ap. térreo Aquiraz Riviera', capacidade: 8, camas: 3, precoNoite: 498, precoHospedeDiaria: 62.25 },
+        { imovel: 'Riviera Beach Place Térreo', capacidade: 8, camas: 4, precoNoite: 542, precoHospedeDiaria: 67.75 },
+        { imovel: 'Beach Place golf resort', capacidade: 8, camas: 5, precoNoite: 650, precoHospedeDiaria: 81.25 },
+        { imovel: 'Ap. Manhatthan Praia', capacidade: 8, camas: 3, precoNoite: 693, precoHospedeDiaria: 86.63 },
+        { imovel: 'Bangalô vista mar Resort', capacidade: 10, camas: 6, precoNoite: 986, precoHospedeDiaria: 98.60 },
+        { imovel: 'Cobertura a beira mar', capacidade: 8, camas: 6, precoNoite: 791, precoHospedeDiaria: 98.88 },
+        { imovel: 'Cond. Fortaleza Aquiraz', capacidade: 10, camas: null, precoNoite: 997, precoHospedeDiaria: 99.70 },
+        { imovel: 'Bangalô vista mar Manhattan', capacidade: 8, camas: 8, precoNoite: 975, precoHospedeDiaria: 121.88 },
+        { imovel: 'Praia “5 estrelas” Riviera', capacidade: 6, camas: 4, precoNoite: 964, precoHospedeDiaria: 160.67 },
+        { imovel: 'NOSSO IMÓVEL (Base)', capacidade: 8, camas: 6, precoNoite: 650, precoHospedeDiaria: 81.25, isFocus: true }
+    ];
+
+    let competitorChart;
+    let pricingChart;
+    let currentSort = { column: 'precoHospedeDiaria', direction: 'asc' };
+    let currentChartView = 'precoHospedeDiaria';
+
+    const renderCompetitorChart = (view) => {
+        const ctx = document.getElementById('competitorChart').getContext('2d');
+        const sortedData = [...propertyData].sort((a, b) => a[view] - b[view]);
+
+        const labels = sortedData.map(p => p.imovel.length > 25 ? p.imovel.substring(0, 22) + '...' : p.imovel);
+        const data = sortedData.map(p => p[view]);
+        const backgroundColors = sortedData.map(p => p.isFocus ? 'rgba(234, 179, 8, 0.8)' : 'rgba(100, 116, 139, 0.7)');
+        const borderColors = sortedData.map(p => p.isFocus ? 'rgba(234, 179, 8, 1)' : 'rgba(100, 116, 139, 1)');
+
+        const chartConfig = {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: view === 'precoNoite' ? 'Preço por Noite (R$)' : 'Preço por Hóspede (R$)',
+                    data: data,
+                    backgroundColor: backgroundColors,
+                    borderColor: borderColors,
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.x !== null) {
+                                    label += new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(context.parsed.x);
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: view === 'precoNoite' ? 'Preço Mediano por Noite (R$)' : 'Preço Mediano por Hóspede (R$)'
+                        }
+                    }
+                }
+            }
+        };
+
+        if (competitorChart) {
+            competitorChart.destroy();
+        }
+        competitorChart = new Chart(ctx, chartConfig);
+    };
+
+    const renderPricingChart = () => {
+        const ctx = document.getElementById('pricingChart').getContext('2d');
+        const pricingData = {
+            labels: ['Captação', 'Baixa Estação', 'Base', 'Alta Estação'],
+            datasets: [{
+                label: 'Valor por Noite (R$)',
+                data: [500, 543, 650, 1004],
+                backgroundColor: [
+                    'rgba(100, 116, 139, 0.7)',
+                    'rgba(59, 130, 246, 0.7)',
+                    'rgba(234, 179, 8, 0.8)',
+                    'rgba(239, 68, 68, 0.7)'
+                ],
+                borderColor: [
+                    'rgba(100, 116, 139, 1)',
+                    'rgba(59, 130, 246, 1)',
+                    'rgba(234, 179, 8, 1)',
+                    'rgba(239, 68, 68, 1)'
+                ],
+                borderWidth: 1
+            }]
+        };
+
+        const chartConfig = {
+            type: 'bar',
+            data: pricingData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return 'R$ ' + context.parsed.y;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Valor da Diária (R$)'
+                        }
+                    }
+                }
+            }
+        };
+        
+        if (pricingChart) {
+            pricingChart.destroy();
+        }
+        pricingChart = new Chart(ctx, chartConfig);
+    };
+
+    const renderTable = () => {
+        const tableBody = document.querySelector('#competitorTable tbody');
+        tableBody.innerHTML = '';
+        const sortedData = [...propertyData]
+            .filter(p => !p.isFocus)
+            .sort((a, b) => {
+                const valA = a[currentSort.column];
+                const valB = b[currentSort.column];
+                if (valA < valB) return currentSort.direction === 'asc' ? -1 : 1;
+                if (valA > valB) return currentSort.direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+        sortedData.forEach(p => {
+            const row = document.createElement('tr');
+            row.className = 'border-b border-slate-200 hover:bg-slate-50';
+            row.innerHTML = `
+                <td class="p-3 text-xs">${p.imovel}</td>
+                <td class="p-3 text-center">${p.capacidade}</td>
+                <td class="p-3 text-center">${p.camas || 'N/A'}</td>
+                <td class="p-3 text-right">${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(p.precoNoite)}</td>
+                <td class="p-3 text-right font-medium">${new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(p.precoHospedeDiaria)}</td>
+            `;
+            tableBody.appendChild(row);
+        });
+    };
+    
+    document.querySelectorAll('#competitorTable th').forEach(header => {
+        header.addEventListener('click', () => {
+            const column = header.dataset.sort;
+            if (currentSort.column === column) {
+                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort.column = column;
+                currentSort.direction = 'asc';
+            }
+            renderTable();
+        });
+    });
+    
+    const updateChartViewButtons = () => {
+        const btnPrecoNoite = document.getElementById('viewPrecoNoite');
+        const btnPrecoHospede = document.getElementById('viewPrecoHospede');
+        if (currentChartView === 'precoNoite') {
+            btnPrecoNoite.classList.add('bg-white', 'text-slate-700', 'shadow-sm');
+            btnPrecoHospede.classList.remove('bg-white', 'text-slate-700', 'shadow-sm');
+        } else {
+            btnPrecoHospede.classList.add('bg-white', 'text-slate-700', 'shadow-sm');
+            btnPrecoNoite.classList.remove('bg-white', 'text-slate-700', 'shadow-sm');
+        }
+    };
+
+    document.getElementById('viewPrecoNoite').addEventListener('click', () => {
+        currentChartView = 'precoNoite';
+        renderCompetitorChart(currentChartView);
+        updateChartViewButtons();
+    });
+
+    document.getElementById('viewPrecoHospede').addEventListener('click', () => {
+        currentChartView = 'precoHospedeDiaria';
+        renderCompetitorChart(currentChartView);
+        updateChartViewButtons();
+    });
+
+    const desktopNavLinks = document.querySelectorAll('.nav-link');
+    const mobileNavLinks = document.querySelectorAll('.mobile-nav-link');
+    const sections = document.querySelectorAll('main section');
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const id = entry.target.id;
+                desktopNavLinks.forEach(link => {
+                    link.classList.toggle('active', link.getAttribute('href').substring(1) === id);
+                });
+                mobileNavLinks.forEach(link => {
+                    link.classList.toggle('active', link.getAttribute('href').substring(1) === id);
+                });
+            }
+        });
+    }, { rootMargin: "-40% 0px -60% 0px" });
+
+    sections.forEach(section => observer.observe(section));
+
+    const strategySteps = document.querySelectorAll('.strategy-step');
+    const strategyContentPanels = document.querySelectorAll('.strategy-content-panel');
+
+    strategySteps.forEach(step => {
+        step.addEventListener('click', () => {
+            const selectedStep = step.dataset.step;
+
+            strategySteps.forEach(s => {
+                s.classList.remove('active');
+                const circle = s.querySelector('.step-circle');
+                const title = s.querySelector('h4');
+                circle.classList.remove('bg-amber-500', 'text-white');
+                circle.classList.add('bg-slate-300', 'text-slate-600');
+                title.classList.remove('text-slate-800');
+                title.classList.add('text-slate-500');
+            });
+
+            step.classList.add('active');
+            const activeCircle = step.querySelector('.step-circle');
+            const activeTitle = step.querySelector('h4');
+            activeCircle.classList.add('bg-amber-500', 'text-white');
+            activeCircle.classList.remove('bg-slate-300', 'text-slate-600');
+            activeTitle.classList.add('text-slate-800');
+            activeTitle.classList.remove('text-slate-500');
+
+            strategyContentPanels.forEach(panel => {
+                panel.classList.toggle('hidden', panel.dataset.content !== selectedStep);
+            });
+        });
+    });
+
+    let lastScrollY = window.scrollY;
+    const mobileHeader = document.getElementById('mobile-header');
+    window.addEventListener('scroll', () => {
+        if (window.innerWidth < 768) {
+            if (lastScrollY < window.scrollY && window.scrollY > 150) {
+                mobileHeader.classList.add('mobile-header-hidden');
+            } else {
+                mobileHeader.classList.remove('mobile-header-hidden');
+            }
+            lastScrollY = window.scrollY;
+        }
+    });
+
+    renderCompetitorChart(currentChartView);
+    renderPricingChart();
+    renderTable();
+    updateChartViewButtons();
+});
+</script>
+
+</body>
+</html>
